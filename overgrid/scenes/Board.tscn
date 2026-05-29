@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://c2dynj6hdg5q8"]
+
+[ext_resource type="Script" uid="uid://h32vh7lve5n3" path="res://scripts/Board.gd" id="1_bw3vb"]
+
+[node name="Board" type="Node2D" unique_id=750948528]
+script = ExtResource("1_bw3vb")
+
+[node name="TileContainer" type="Node2D" parent="." unique_id=193789231]
+
+[node name="ChainLine" type="Line2D" parent="." unique_id=2067535596]
+width = 14.0
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+
+[node name="ChainCounter" type="Label" parent="." unique_id=1041164812]
+visible = false
+z_index = 20
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 72
+horizontal_alignment = 1

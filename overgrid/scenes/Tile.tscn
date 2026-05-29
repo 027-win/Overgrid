@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://2b05548v31yt"]
+
+[ext_resource type="Script" uid="uid://dukyotkoync2c" path="res://scripts/Tile.gd" id="1_3dk36"]
+
+[node name="Tile" type="Node2D" unique_id=1640938814]
+script = ExtResource("1_3dk36")
+
+[node name="TileBody" type="Panel" parent="." unique_id=707639475]
+offset_right = 156.0
+offset_bottom = 156.0
+
+[node name="SelectionRing" type="Panel" parent="." unique_id=2105632239]
+offset_right = 156.0
+offset_bottom = 156.0
+
+[node name="BombIcon" type="Label" parent="." unique_id=1258855174]
+visible = false
+offset_right = 156.0
+offset_bottom = 156.0
+theme_override_font_sizes/font_size = 72
+text = "💣"
+horizontal_alignment = 1
+vertical_alignment = 1

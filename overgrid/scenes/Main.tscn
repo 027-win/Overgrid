@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://c8h380w2vt7il"]
+
+[ext_resource type="Script" uid="uid://blj5wwsthx3y8" path="res://scripts/Main.gd" id="1_rvslj"]
+[ext_resource type="PackedScene" uid="uid://c2dynj6hdg5q8" path="res://scenes/Board.tscn" id="2_0bbpv"]
+
+[node name="Main" type="Node2D" unique_id=960164493]
+script = ExtResource("1_rvslj")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1546203777]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1080.0
+offset_bottom = 1920.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.050980393, 0.050980393, 0.101960786, 1)
+
+[node name="Board" parent="." unique_id=750948528 instance=ExtResource("2_0bbpv")]
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=717261510]
+
+[node name="TopBar" type="ColorRect" parent="UI" unique_id=1113628691]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 150.0
+grow_horizontal = 2
+color = Color(0.101960786, 0.101960786, 0.18039216, 1)
+
+[node name="EnergyLabel" type="Label" parent="UI/TopBar" unique_id=29011847]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -35.0
+offset_right = 100.0
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 56
+text = "⚡ 0"
+
+[node name="IdleRateLabel" type="Label" parent="UI/TopBar" unique_id=703285515]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -480.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = 110.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.26666668, 1, 0.53333336, 1)
+theme_override_font_sizes/font_size = 36
+horizontal_alignment = 2

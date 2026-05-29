@@ -21,6 +21,18 @@ const SURGE_BIG_DUR = 28.0
 const SURGE_MEGA_MULT = 3.8
 const SURGE_MEGA_DUR = 38.0
 
+# ── PRESTIGE SYSTEM ──────────────────────────
+var prestige_level: int = 0
+var total_pc_earned_all_time: float = 0.0
+var total_ds_earned_all_time: float = 0.0
+var prestige_resets_count: int = 0
+
+const PRESTIGE_CONFIG = {
+	"unlock_at_ds": 500.0,
+	"base_bonus_per_level": 0.15,  # 15% multiplier per prestige
+	"grid_token_bonus_per_level": 5,  # 5 GT per prestige level
+}
+
 # Offline
 var _last_save_time: int = 0
 
@@ -172,6 +184,8 @@ signal upgrades_changed()
 signal surge_triggered(multiplier: float, duration: float)
 signal surge_ended()
 signal grid_token_earned(amount: int)
+signal prestige_available(ds_required: float)
+signal prestige_completed(new_prestige_level: int, bonus_gt: int)
 
 const SAVE_PATH = "user://save_data.json"
 const AUTO_SAVE_INTERVAL = 30.0
@@ -258,9 +272,7 @@ func collect_building(bld_id: String) -> void:
 	if building_ready.get(bld_id, false):
 		_do_collect(bld_id)
 
-# ... [All your original functions below - get_building_cost, buy_building, get_manager_cost, buy_manager, is_building_unlocked, get_building_multiplier, etc.] ...
-# I kept them exactly as you had them for compatibility.
-
+# ── BUILDING FUNCTIONS ─────────────────────
 func get_building_cost(bld_id: String, quantity: int = 1) -> float:
 	var data = BUILDING_DATA[bld_id]
 	var owned = building_counts.get(bld_id, 0)
@@ -346,7 +358,7 @@ func trigger_surge(multiplier: float, duration: float) -> void:
 		surge_timer = duration
 	emit_signal("surge_triggered", surge_multiplier, surge_timer)
 
-# Upgrade functions (unchanged)
+# ── UPGRADE FUNCTIONS ──────────────────────
 func get_upgrade_cost(upgrade_id: String) -> int:
 	var data = UPGRADE_DATA[upgrade_id]
 	var level = upgrade_levels[upgrade_id]
@@ -388,13 +400,67 @@ func get_total_pc_rate() -> float:
 	for bld_id in BUILDING_DATA:
 		total += get_building_pc_rate(bld_id)
 	return total * surge_multiplier
-# Offline Progress
+
+# ── PRESTIGE SYSTEM ───────────────────────
+func get_prestige_multiplier() -> float:
+	return 1.0 + (prestige_level * PRESTIGE_CONFIG.base_bonus_per_level)
+
+func can_prestige() -> bool:
+	return data_shards >= PRESTIGE_CONFIG.unlock_at_ds
+
+func get_prestige_bonus_gt() -> int:
+	return prestige_level * PRESTIGE_CONFIG.grid_token_bonus_per_level
+
+func prestige_reset() -> void:
+	# Track all-time stats before reset
+	total_pc_earned_all_time += power_crystals
+	total_ds_earned_all_time += data_shards
+	prestige_resets_count += 1
+	
+	# Increment prestige level and grant bonus GT
+	prestige_level += 1
+	var bonus_gt = PRESTIGE_CONFIG.grid_token_bonus_per_level
+	grid_tokens += bonus_gt
+	
+	# Reset all buildings and their progress
+	for bld_id in BUILDING_DATA:
+		building_counts[bld_id] = 0
+		building_progress[bld_id] = 0.0
+		building_ready[bld_id] = false
+		building_managers[bld_id] = false
+		milestones_claimed[bld_id] = [false, false, false, false]
+	
+	# Reset resources (keep prestige multiplier for future runs)
+	raw_energy = 0.0
+	power_crystals = 50.0  # Starting PC
+	data_shards = 0.0
+	chain_multiplier = 1.0
+	active_colors = 5
+	surge_multiplier = 1.0
+	surge_timer = 0.0
+	
+	# Reset upgrades for fresh gameplay
+	for upg_id in upgrade_levels:
+		upgrade_levels[upg_id] = 0
+	
+	# Emit signal for UI notification
+	emit_signal("prestige_completed", prestige_level, bonus_gt)
+	emit_signal("resources_changed")
+	save_game()
+
+func apply_prestige_multiplier_to_resources(base_resources: float) -> float:
+	"""Apply prestige multiplier to earned resources (buildings, chain rewards, etc)"""
+	return base_resources * get_prestige_multiplier()
+
+# ── OFFLINE PROGRESS ───────────────────────
 func calculate_offline_progress() -> void:
 	if _last_save_time <= 0:
 		return
 	var time_passed = Time.get_unix_time_from_system() - _last_save_time
 	time_passed = minf(time_passed, 12 * 3600)
 	var offline_eff = 0.65
+	var prestige_mult = get_prestige_multiplier()
+	
 	for bld_id in BUILDING_DATA:
 		if not building_managers.get(bld_id, false): continue
 		var data = BUILDING_DATA[bld_id]
@@ -402,11 +468,11 @@ func calculate_offline_progress() -> void:
 		if count == 0: continue
 		var mult = get_building_multiplier(bld_id)
 		var cycles = (time_passed * offline_eff) / data.cycle_duration
-		power_crystals += data.pc_per_cycle * count * mult * cycles
-		data_shards += data.ds_per_cycle * count * mult * cycles
+		power_crystals += data.pc_per_cycle * count * mult * cycles * prestige_mult
+		data_shards += data.ds_per_cycle * count * mult * cycles * prestige_mult
 	emit_signal("resources_changed")
 
-# Save / Load
+# ── SAVE / LOAD ────────────────────────────
 func save_game() -> void:
 	_last_save_time = Time.get_unix_time_from_system()
 	var ms_data = {}
@@ -426,7 +492,11 @@ func save_game() -> void:
 		"building_ready": building_ready.duplicate(),
 		"building_managers": building_managers.duplicate(),
 		"milestones_claimed": ms_data,
-		"_last_save_time": _last_save_time
+		"_last_save_time": _last_save_time,
+		"prestige_level": prestige_level,
+		"total_pc_earned_all_time": total_pc_earned_all_time,
+		"total_ds_earned_all_time": total_ds_earned_all_time,
+		"prestige_resets_count": prestige_resets_count,
 	}
 	
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -452,13 +522,37 @@ func load_game() -> void:
 	chain_multiplier = parsed.get("chain_multiplier", 1.0)
 	active_colors = parsed.get("active_colors", 5)
 	_last_save_time = parsed.get("_last_save_time", 0)
+	prestige_level = parsed.get("prestige_level", 0)
+	total_pc_earned_all_time = parsed.get("total_pc_earned_all_time", 0.0)
+	total_ds_earned_all_time = parsed.get("total_ds_earned_all_time", 0.0)
+	prestige_resets_count = parsed.get("prestige_resets_count", 0)
 	
-	# Load upgrades, buildings, etc. (same as before)
+	# Load upgrades
 	var lu = parsed.get("upgrade_levels", {})
 	for k in upgrade_levels:
 		if lu.has(k): upgrade_levels[k] = lu[k]
 	
-	# ... (copy the rest of your original load logic for buildings) ...
+	# Load buildings
+	var lbc = parsed.get("building_counts", {})
+	for k in building_counts:
+		if lbc.has(k): building_counts[k] = lbc[k]
+	
+	var lbp = parsed.get("building_progress", {})
+	for k in building_progress:
+		if lbp.has(k): building_progress[k] = lbp[k]
+	
+	var lbr = parsed.get("building_ready", {})
+	for k in building_ready:
+		if lbr.has(k): building_ready[k] = lbr[k]
+	
+	var lbm = parsed.get("building_managers", {})
+	for k in building_managers:
+		if lbm.has(k): building_managers[k] = lbm[k]
+	
+	var lmc = parsed.get("milestones_claimed", {})
+	for k in milestones_claimed:
+		if lmc.has(k): milestones_claimed[k] = lmc[k]
+	
 	calculate_offline_progress()
 	emit_signal("resources_changed")
 
@@ -466,6 +560,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
 		save_game()
 
+# ── UTILITY FUNCTIONS ──────────────────────
 static func fmt(n: float) -> String:
 	if n < 1000.0: return "%.1f" % n
 	elif n < 1000000.0: return "%.1fK" % (n / 1000.0)
